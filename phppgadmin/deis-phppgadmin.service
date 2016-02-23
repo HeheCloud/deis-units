@@ -1,0 +1,16 @@
+[Unit]
+Description=deis-phppgadmin
+
+[Service]
+EnvironmentFile=/etc/environment
+TimeoutStartSec=20m
+ExecStartPre=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/phppgadmin` && docker history $IMAGE >/dev/null 2>&1 || flock -w 1200 /var/run/lock/alpine-pull docker pull $IMAGE"
+ExecStartPre=/bin/sh -c "docker inspect phppgadmin_v2.cmd.1 >/dev/null 2>&1 && docker rm -f phppgadmin_v2.cmd.1 >/dev/null 2>&1 || true"
+ExecStart=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/phppgadmin` && docker run --name phppgadmin_v2.cmd.1 --rm -p 10801:8000 -e EXTERNAL_PORT=10801 -e HOST=$COREOS_PRIVATE_IPV4 $IMAGE"
+ExecStop=-/usr/bin/docker exec phppgadmin_v2.cmd.1 /app/bin/clean
+ExecStop=-/usr/bin/docker stop phppgadmin_v2.cmd.1
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
