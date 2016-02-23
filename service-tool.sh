@@ -34,7 +34,9 @@ function download_unit {
 
 # install
 function install {
-	download_unit
+	if [ ! -f $HEHE_UNIT_FILE_PATH ]; then
+		download_unit
+	fi
 	/opt/bin/deisctl install $HEHE_SERVICE_NAME
 }
 
@@ -46,9 +48,7 @@ function uninstall {
 
 # start
 function start {
-	if [ ! -f $HEHE_UNIT_FILE_PATH ]; then
-		download_unit
-	fi
+	install
 	/opt/bin/deisctl start $HEHE_SERVICE_NAME
 }
 
@@ -78,7 +78,10 @@ case "$2" in
 	restart)
 		restart
 		;;
+	download)
+		download
+		;;
 	*)
-	echo "Usage: $0 <service name> {start|stop|restart|install|uninstall}"
+	echo "Usage: $0 <service name> {start|stop|restart|install|uninstall|download}"
 	exit -1
 esac
