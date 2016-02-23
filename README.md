@@ -3,7 +3,6 @@
 ## Usage
 
 ```
-DEIS_RELEASE=v1.12.2
 $ service-tool.sh <service name> {start|stop|restart|install|uninstall}"
 ```
 
