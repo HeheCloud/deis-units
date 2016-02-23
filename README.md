@@ -9,6 +9,13 @@ Deis Units At HeheCloud
 $ service-tool.sh <service name> {start|stop|restart|install|uninstall}
 ```
 
+OR
+
+```
+$ curl -sSL --retry 7 --retry-delay 3 http://get.hehecloud.com/service-tool.sh | sh -s <service name> {start|stop|restart|install|uninstall}
+```
+
+
 ## Additional Resources
 
 * [HeheCloud](http://hehecloud.com/)

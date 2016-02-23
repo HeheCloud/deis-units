@@ -4,7 +4,6 @@ set -eo pipefail
 
 [[ $DEBUG ]] && set -x
 
-
 if [ -z "$1" ]; then
 	echo "missing required params #1"
 	exit -1
@@ -14,7 +13,6 @@ if [ -z "$2" ]; then
 	echo "missing required params #2"
 	exit -1
 fi
-
 
 HEHE_SERVICE_NAME=$1
 HEHE_UNIT="deis-${HEHE_SERVICE_NAME}.service"
@@ -46,24 +44,23 @@ function uninstall {
 	rm -rf $HEHE_UNIT_FILE_PATH
 }
 
-
 # start
 function start {
+	if [ ! -f $HEHE_UNIT_FILE_PATH ]; then
+		download_unit
+	fi
 	/opt/bin/deisctl start $HEHE_SERVICE_NAME
 }
-
 
 # stop
 function stop {
 	/opt/bin/deisctl stop $HEHE_SERVICE_NAME
 }
 
-
 # restart
 function restart {
 	/opt/bin/deisctl restart $HEHE_SERVICE_NAME
 }
-
 
 case "$2" in
 	start)
@@ -82,6 +79,6 @@ case "$2" in
 		restart
 		;;
 	*)
-	echo $"Usage: $0 <service name> {start|stop|restart|install|uninstall}"
+	echo "Usage: $0 <service name> {start|stop|restart|install|uninstall}"
 	exit -1
 esac
