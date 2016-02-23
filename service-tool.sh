@@ -29,7 +29,7 @@ function create_path {
 # download unit
 function download_unit {
 	create_path
-	/usr/bin/curl -sSL --retry 7 --retry-delay 2 -o ${HEHE_UNIT_FILE_PATH} http://get.hehecloud.com/units/${HEHE_UNIT}
+	/usr/bin/curl -sSL --fail --retry 7 --retry-delay 2 -o ${HEHE_UNIT_FILE_PATH} http://get.hehecloud.com/units/${HEHE_UNIT}
 }
 
 # install
