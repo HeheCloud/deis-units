@@ -12,7 +12,7 @@ $ service-tool.sh <service name> {start|stop|restart|install|uninstall|download}
 OR
 
 ```
-$ curl -sSL --fail --retry 7 --retry-delay 3 http://get.hehecloud.com/service-tool.sh | sh -s <service name> {start|stop|restart|install|uninstall|download}
+$ curl -sSL --fail --retry 7 --retry-delay 3 http://get.hehecloud.com/service-tool.sh | sudo sh -s <service name> {start|stop|restart|install|uninstall|download}
 ```
 
 
