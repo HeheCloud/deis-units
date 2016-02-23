@@ -1,6 +1,6 @@
 # Deis Units
 
-Deis units At HeheCloud
+Deis Units At HeheCloud
 
 
 ## Usage
