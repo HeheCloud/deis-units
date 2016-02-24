@@ -9,7 +9,7 @@ ExecStartPre=/bin/sh -c 'IMAGE="csphere/csphere:0.12.3" && docker history $IMAGE
 ExecStartPre=-/bin/sh -c "mkdir -p /data/csphere"
 ExecStartPre=/bin/sh -c "docker inspect csphere-controller >/dev/null 2>&1 && docker rm -f csphere-controller >/dev/null 2>&1 || true"
 ExecStart=/bin/sh -c 'IMAGE="csphere/csphere:0.12.3" && docker run --name=csphere-controller -v /data/csphere:/data:rw -p 1016:80 -e ROLE=controller -e AUTH_KEY==`etcdctl get /hehe/services/csphere/authkey`  -l CSPHERE_ROLE=controller $IMAGE'
-ExecStop=-/usr/bin/docker stop deis-dd-agent
+ExecStop=-/usr/bin/docker stop csphere-controller
 Restart=on-failure
 RestartSec=5
 
