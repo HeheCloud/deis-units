@@ -6,9 +6,9 @@ After=docker.socket
 [Service]
 TimeoutStartSec=20m
 ExecStartPre=-/bin/sh -c "docker rm -f deis-dd-agent >/dev/null 2>&1"
-ExecStartPre=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/dd-agent` && docker history $IMAGE >/dev/null 2>&1 || flock -w 1200 /var/run/lock/datadog-pull docker pull $IMAGE"
+ExecStartPre=/bin/sh -c "IMAGE=`/run/deis/bin/get_image /deis/dd-agent` && docker history $IMAGE >/dev/null 2>&1 || flock -w 1200 /var/run/lock/datadog-pull docker pull ${IMAGE}"
 ExecStart=/bin/sh -c 'IMAGE=`/run/deis/bin/get_image /deis/dd-agent` && API_KEY=`etcdctl --no-sync get /hehe/services/datadog/apikey` && STATUS=`curl -o /dev/null -s -w %{http_code} "https://app.datadoghq.com/api/v1/validate?api_key=${API_KEY}"` && if [ "$STATUS" -ne "200" ];then exit 1; fi && docker run --privileged --name deis-dd-agent -h %H -v /var/run/docker.sock:/var/run/docker.sock -v /proc/:/host/proc/:ro -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro -e API_KEY=${API_KEY} ${IMAGE}'
-ExecStop=-/usr/bin/docker stop dd-agent
+ExecStop=-/usr/bin/docker stop deis-dd-agent
 Restart=on-abnormal
 RestartSec=5s
 
