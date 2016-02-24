@@ -40,12 +40,6 @@ function install {
 	/opt/bin/deisctl install $HEHE_SERVICE_NAME
 }
 
-# uninstall
-function uninstall {
-	/opt/bin/deisctl uninstall $HEHE_SERVICE_NAME
-	rm -rf $HEHE_UNIT_FILE_PATH
-}
-
 # start
 function start {
 	install
@@ -55,6 +49,13 @@ function start {
 # stop
 function stop {
 	/opt/bin/deisctl stop $HEHE_SERVICE_NAME
+}
+
+# uninstall
+function uninstall {
+	stop
+	/opt/bin/deisctl uninstall $HEHE_SERVICE_NAME
+	rm -rf $HEHE_UNIT_FILE_PATH
 }
 
 # restart
