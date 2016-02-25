@@ -26,7 +26,6 @@ docker push localhost:5000/deis/dd-agent:${DEIS_RELEASE}
 * **ETCD_TTL** sets the time-to-live before etcd purges a configuration
   value, in seconds (default: *10*)
 * **HOST** Host's IP address
-* **EXTERNAL_PORT** sets the TCP port on which the web server listens (default: *10801*)
 
 
 ## Additional Resources
