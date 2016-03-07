@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set +e
+export ETCD_PORT="${ETCD_PORT:-4001}"
+export ETCD="$HOST:$ETCD_PORT"
+export ETCD_PATH="${ETCD_PATH:-/hehe/services/rizhiyi}"
+
+etcdctl --no-sync -C "$ETCD" rm $ETCD_PATH --recursive >/dev/null
+etcdctl --no-sync -C "$ETCD" rm "/deis/logs/drain" >/dev/null
+exit 0

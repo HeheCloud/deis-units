@@ -1,0 +1,27 @@
+[Unit]
+Description=rizhiyi
+Requires=docker.socket
+After=docker.socket
+
+[Service]
+TimeoutStartSec=20m
+EnvironmentFile=/etc/environment
+Environment=IMAGE=emperor/rizhiyi:v1.0.2
+Environment=CONTAINER=deis-rizhiyi
+Environment=EXTERNAL_PORT=10514
+Environment=LOG_PATH=/data/rizhiyi
+ExecStartPre=/bin/sh -c "docker history $IMAGE >/dev/null 2>&1 || flock -w 1200 /var/run/lock/$CONTAINER-pull docker pull $IMAGE"
+ExecStartPre=-/bin/sh -c "docker rm -f $CONTAINER >/dev/null 2>&1"
+ExecStart=/bin/sh -c "docker run --name $CONTAINER \
+  -e HOST=$COREOS_PRIVATE_IPV4 \
+  -e EXTERNAL_PORT=$EXTERNAL_PORT \
+  -p $EXTERNAL_PORT:514/udp \
+  -v $LOG_PATH:$LOG_PATH \
+  $IMAGE"
+ExecStop=-/usr/bin/docker exec $CONTAINER /app/bin/clean
+ExecStop=-/usr/bin/docker stop $CONTAINER
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
