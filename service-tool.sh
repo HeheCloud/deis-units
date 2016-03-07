@@ -18,6 +18,7 @@ HEHE_SERVICE_NAME=$1
 HEHE_UNIT="deis-${HEHE_SERVICE_NAME}.service"
 HEHE_UNIT_DIR_PATH="/var/lib/deis/units"
 HEHE_UNIT_FILE_PATH=${HEHE_UNIT_DIR_PATH}/${HEHE_UNIT}
+HEHE_DOWNLOAD_URL="http://get.hehecloud.com"
 
 export DEISCTL_UNITS=$HEHE_UNIT_DIR_PATH
 
@@ -26,17 +27,33 @@ function create_path {
 	/usr/bin/mkdir -p $HEHE_UNIT_DIR_PATH
 }
 
+
+# download k8s unit
+function download_k8s_units {
+	/usr/bin/curl -sSL --fail --retry 7 --retry-delay 2 -o ${HEHE_UNIT_DIR_PATH}/deis-kube-apiserver.service ${HEHE_DOWNLOAD_URL}/units/k8s/deis-kube-apiserver.service && \
+	/usr/bin/curl -sSL --fail --retry 7 --retry-delay 2 -o ${HEHE_UNIT_DIR_PATH}/deis-kube-controller-manager.service ${HEHE_DOWNLOAD_URL}/units/k8s/deis-kube-controller-manager.service && \
+	/usr/bin/curl -sSL --fail --retry 7 --retry-delay 2 -o ${HEHE_UNIT_DIR_PATH}/deis-kube-kubelet.service ${HEHE_DOWNLOAD_URL}/units/k8s/deis-kube-kubelet.service && \
+	/usr/bin/curl -sSL --fail --retry 7 --retry-delay 2 -o ${HEHE_UNIT_DIR_PATH}/deis-kube-proxy.service ${HEHE_DOWNLOAD_URL}/units/k8s/deis-kube-proxy.service && \
+	/usr/bin/curl -sSL --fail --retry 7 --retry-delay 2 -o ${HEHE_UNIT_DIR_PATH}/deis-kube-scheduler.service ${HEHE_DOWNLOAD_URL}/units/k8s/deis-kube-scheduler.service
+}
+
 # download unit
 function download_unit {
 	create_path
-	/usr/bin/curl -sSL --fail --retry 7 --retry-delay 2 -o ${HEHE_UNIT_FILE_PATH} http://get.hehecloud.com/units/${HEHE_UNIT}
+	if [[ "$HEHE_SERVICE_NAME" == "k8s" ]]
+	then
+		download_k8s_units
+	else
+		/usr/bin/curl -sSL --fail --retry 7 --retry-delay 2 -o ${HEHE_UNIT_FILE_PATH} ${HEHE_DOWNLOAD_URL}/units/${HEHE_UNIT}
+	fi
 }
 
 # install
 function install {
-	if [ ! -f $HEHE_UNIT_FILE_PATH ]; then
-		download_unit
-	fi
+	# if [ ! -f $HEHE_UNIT_FILE_PATH ]; then
+	#		download_unit
+	# fi
+	download_unit
 	/opt/bin/deisctl install $HEHE_SERVICE_NAME
 }
 
@@ -55,7 +72,10 @@ function stop {
 function uninstall {
 	stop
 	/opt/bin/deisctl uninstall $HEHE_SERVICE_NAME
-	rm -rf $HEHE_UNIT_FILE_PATH
+	if [[ "$HEHE_SERVICE_NAME" != "k8s" ]]
+	then
+		rm -rf $HEHE_UNIT_FILE_PATH
+	fi
 }
 
 # restart
