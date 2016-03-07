@@ -1,0 +1,59 @@
+[Unit]
+Description=Deis cSphere
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=20m
+EnvironmentFile=/etc/environment
+Environment=IMAGE=daocloud.io/cloudmario/csphere:v1.0.1
+Environment=DATA_DIR=/data/csphere
+Environment=CONTROLLER_PORT=1016
+Environment=ETCD_PATH_AUTH_KEY=/hehe/services/csphere/authkey
+Environment=ETCD_PATH_CONTROLLER_HOST=/hehe/services/csphere/controller/host
+Environment=ETCD_PATH_CONTROLLER_URL=/hehe/services/csphere/controller/url
+ExecStartPre=/bin/sh -c "docker history $IMAGE >/dev/null 2>&1 || flock -w 1200 /var/run/lock/csphere-pull docker pull $IMAGE"
+ExecStartPre=/bin/sh -c "docker ps -a | grep 'csphere-' | awk '{print $1}'| xargs --no-run-if-empty docker stop -t 300 >/dev/null 2>&1 || true"
+ExecStartPre=/bin/sh -c "docker ps -a | grep 'csphere-' | awk '{print $1}'| xargs --no-run-if-empty docker rm -f >/dev/null 2>&1 || true"
+ExecStartPre=-/bin/sh -c "rm -rf $DATA_DIR"
+ExecStartPre=-/bin/sh -c "etcdctl mk $ETCD_PATH_CONTROLLER_HOST $COREOS_PRIVATE_IPV4 >/dev/null 2>&1"
+ExecStartPre=/bin/sh -c 'if [[ "$(etcdctl get $ETCD_PATH_CONTROLLER_HOST)" == "$COREOS_PRIVATE_IPV4" ]]; then \
+  echo "Starting csphere-controller..." && \
+  AUTH_KEY=`etcdctl get $ETCD_PATH_AUTH_KEY` && \
+  docker run -d --restart=always --name=csphere-controller \
+    -v $DATA_DIR:/data:rw \
+    -p $CONTROLLER_PORT:80 \
+    -e ROLE=controller \
+    -e AUTH_KEY=$AUTH_KEY \
+    -l CSPHERE_ROLE=controller ${IMAGE} && \
+  etcdctl set $ETCD_PATH_CONTROLLER_URL "http://${COREOS_PUBLIC_IPV4}:${CONTROLLER_PORT}/"; fi'
+ExecStartPre=/bin/sh -c "until (echo 'Waiting for controller on ${CONTROLLER_PORT}/tcp...' && curl -sSL http://$(etcdctl get $ETCD_PATH_CONTROLLER_HOST):${CONTROLLER_PORT}/ | grep -e '<!DOCTYPE html>' >/dev/null 2>&1); do sleep 3; done"
+ExecStart=/bin/sh -c "AUTH_KEY=`etcdctl get $ETCD_PATH_AUTH_KEY` && \
+  CONTROLLER_ADDR=$(etcdctl get $ETCD_PATH_CONTROLLER_HOST):$CONTROLLER_PORT && \
+  echo 'Starting csphere-agent...' && \
+  docker run -d --restart=always --name=csphere-agent \
+    -e ROLE=agent \
+    -e CONTROLLER_ADDR=$CONTROLLER_ADDR \
+    -e AUTH_KEY=$AUTH_KEY \
+    -v $DATA_DIR:/data:rw \
+    -v /proc:/rootfs/proc:ro \
+    -v /sys:/rootfs/sys:ro \
+    -v /etc:/rootfs/etc:rw \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -l CSPHERE_ROLE=agent \
+    --net=host $IMAGE && \
+    while (echo 'Checking controller...' && \
+      curl -sSL http://$(etcdctl get $ETCD_PATH_CONTROLLER_HOST):${CONTROLLER_PORT}/ | grep -e '<!DOCTYPE html>' >/dev/null 2>&1); do sleep 10; done"
+ExecStop=-/bin/sh -c "docker ps -a | grep 'csphere-' | awk '{print $1}'| xargs --no-run-if-empty docker stop -t 300  >/dev/null 2>&1"
+ExecStopPost=/bin/sh -c 'CONTROLLER_HOST=$(etcdctl get $ETCD_PATH_CONTROLLER_HOST) && \
+  if [[ "$CONTROLLER_HOST" == "$COREOS_PRIVATE_IPV4" ]]; then \
+  etcdctl rm $ETCD_PATH_CONTROLLER_HOST >/dev/null 2>&1; \
+  etcdctl rm $ETCD_PATH_CONTROLLER_URL >/dev/null 2>&1; fi'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+[X-Fleet]
+Global=true
