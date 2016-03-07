@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+#
+# This script is designed to be run inside the container
+#
+
+# fail hard and fast even on pipelines
+set -eo pipefail
+
+# set debug based on envvar
+[[ $DEBUG ]] && set -x
+
+# configure etcd
+export ETCD_PORT="${ETCD_PORT:-4001}"
+export ETCD="$HOST:$ETCD_PORT"
+export ETCD_PATH="${ETCD_PATH:-/hehe/services/rizhiyi}"
+export ETCD_TTL="${ETCD_TTL:-20}"
+
+until etcdctl --no-sync -C "$ETCD" ls >/dev/null 2>&1; do
+  echo "rizhiyi: waiting for etcd at $ETCD..."
+  sleep $((ETCD_TTL/2))  # sleep for half the TTL
+done
+
+# wait until etcd has discarded potentially stale values
+sleep $((ETCD_TTL+1))
+
+RSYSLOG_DIR=${RSYSLOG_DIR:-/var/spool/rsyslog}
+[ -d $RSYSLOG_DIR ] || mkdir -p $RSYSLOG_DIR
+
+print_error() {
+  echo -ne "\e[31m"
+  echo "$1"
+  echo -ne "\e[0m";
+  echo -ne "\e[0m"
+}
+
+check_environment() {
+  if [ "x${SYSLOG_SERVER_HOST}" == "x" -o "x${AUTH_TOKEN}" == "x" -o "x${APPNAME}" == "x" -o "x${TAG}" == "x" ]; then
+    print_error "Please check if the etcd keys are set correctly."
+    exit 1
+  fi
+
+  ping -c 1 $SYSLOG_SERVER_HOST >/dev/null 2>&1
+  if [ $? == 0 ]; then
+    echo "$SYSLOG_SERVER_HOST is reachable."
+  else
+    print_error  "$SYSLOG_SERVER_HOST is not reachable. Please check your network and firewall settings."
+    exit 1
+  fi
+}
+
+# run the service
+export HOSTNAME="deis"
+export SYSLOG_SERVER_HOST=`etcdctl -C "$ETCD" get "$ETCD_PATH/server" 2> /dev/null`
+export AUTH_TOKEN=`etcdctl -C "$ETCD" get "$ETCD_PATH/authkey" 2> /dev/null`
+export APPNAME=`etcdctl get -C "$ETCD" "$ETCD_PATH/appname" 2> /dev/null`
+export TAG=`etcdctl get -C "$ETCD" "$ETCD_PATH/tag" 2> /dev/null`
+check_environment
+
+# wait for confd to run once and install initial templates
+until confd -onetime -node "$ETCD" -confdir /app --log-level error; do
+  echo "rizhiyi: waiting for confd to write initial templates..."
+  sleep $((ETCD_TTL/2))  # sleep for half the TTL
+done
+
+sleep 1
+[ -f /var/run/rsyslogd.pid ] || rsyslogd
+echo "rsyslogd is running ..."
+
+# smart shutdown on SIGINT and SIGTERM
+function on_exit() {
+    echo "rsyslogd: on_exit() called"
+    RSYSLOGD_PID=$(cat /var/run/rsyslogd.pid)
+    kill -TERM $RSYSLOGD_PID
+    wait $RSYSLOGD_PID 2>/dev/null
+    exit 0
+}
+trap on_exit INT TERM
+
+confd -node "$ETCD" --confdir /app --log-level error --interval 5 &
+
+if [[ ! -z $EXTERNAL_PORT ]]; then
+
+    # configure service discovery
+    PROTO=${PROTO:-udp}
+    PORT=${PORT:-514}
+    SERVICE_URL=${PROTO}://${HOST}:${EXTERNAL_PORT}
+
+    set +e
+
+    # wait for the service to become available on PORT
+    sleep 1 && while [[ -z $(netstat -lnu | awk "\$4 ~ \".$PORT\" && \$1 ~ \"$PROTO.?\"") ]] ; do sleep 1; done
+    etcdctl --no-sync -C "$ETCD" set "/deis/logs/drain" "$SERVICE_URL" --ttl "$ETCD_TTL" >/dev/null
+fi
+
+wait

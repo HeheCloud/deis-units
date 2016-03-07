@@ -1,0 +1,10 @@
+[template]
+src = "rsyslog.conf"
+dest = "/etc/rsyslog.conf"
+keys = [
+    "/hehe/services/rizhiyi/appname",
+    "/hehe/services/rizhiyi/authkey",
+    "/hehe/services/rizhiyi/tag",
+    "/hehe/services/rizhiyi/server",
+]
+reload_cmd = "/app/bin/reload"

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set +e
+kill  $(cat /var/run/rsyslogd.pid)
+rsyslogd
+exit 0
